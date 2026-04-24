@@ -1,0 +1,13 @@
+# Local config — never commit
+.env
+
+# Runtime artifacts
+reports/
+security-reports/
+
+# Generated from templates at install time
+launchd/*.plist
+!launchd/*.plist.template
+
+# macOS
+.DS_Store
