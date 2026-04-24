@@ -127,9 +127,78 @@ Output one concise `## Release / artifact cleanup` section grouping deletions pe
 `gh pr list -R $GITHUB_USER/<repo> --state merged --limit 5 --json number,title,mergedAt`. Pick the most recent merged PR you have NOT already reviewed (check via `gh pr view <n> --json reviews` for your past reviews — your username will be your `@me`). Read the diff. Comment ONLY on real findings (correctness, security, performance, significant maintainability). NO LGTM or nitpicks. If nothing real, skip silently.
 
 ## Step 5 — Hygiene
-Per repo, flag missing: `LICENSE`, `README.md`, any `.github/workflows/*.yml`, dependabot/renovate config (`.github/dependabot.yml` or `renovate.json`). If any missing, open ONE tracking issue `Maintenance: repo hygiene checklist` with a checkbox per missing file. Don't open if one already exists (`gh issue list --search "Maintenance: repo hygiene checklist in:title"`).
+Per repo, flag missing: `LICENSE`, `README.md`, any `.github/workflows/*.yml`, dependabot/renovate config (`.github/dependabot.yml` or `renovate.json`). If any missing (EXCLUDING dependabot — that's handled in Step 5.1), open ONE tracking issue `Maintenance: repo hygiene checklist` with a checkbox per missing file. Don't open if one already exists (`gh issue list --search "Maintenance: repo hygiene checklist in:title"`).
 
 Also note any branches with `[security]` or `vulnerability` in commit messages in the past week — surface in the report.
+
+## Step 5.1 — Dependabot auto-config (draft PRs)
+If a repo has NO dependency management config (`.github/dependabot.yml` AND `renovate.json` both absent), AND at least one detectable ecosystem, draft a PR adding a properly-configured `.github/dependabot.yml`.
+
+**Pre-checks — must ALL pass:**
+- `.github/dependabot.yml` absent (check both `main` / `master` default branch)
+- `renovate.json` absent at repo root or under `.github/` (don't compete with Renovate)
+- Repo is not archived
+- WIP pre-check from Step 3: no open PR by `@me` on this repo
+- No previous dependabot-config PR by `@me` has been opened on this repo (check `gh pr list --author @me --search "dependabot" --state all`) — if there was one and it was closed unmerged, the user declined; respect that and skip
+
+**Detect ecosystems by scanning the repo tree for these manifests at known locations (root + one subdirectory deep; deeper nesting → surface in report, don't auto-config):**
+
+| Manifest file | Ecosystem value |
+|---|---|
+| `package.json` (with `bun.lock` present) | `bun` |
+| `package.json` (otherwise) | `npm` |
+| `Cargo.toml` | `cargo` |
+| `go.mod` | `gomod` |
+| `pyproject.toml` / `requirements.txt` / `setup.py` / `Pipfile` | `pip` |
+| `Gemfile` | `bundler` |
+| `composer.json` | `composer` |
+| `pom.xml` | `maven` |
+| `build.gradle` / `build.gradle.kts` | `gradle` |
+| `Package.swift` | `swift` |
+| `mix.exs` | `mix` |
+| `pubspec.yaml` | `pub` |
+| `*.csproj` / `packages.config` | `nuget` |
+| `Dockerfile` (at any tracked dir) | `docker` |
+| `.github/workflows/*.y{a,}ml` (any file) | `github-actions` |
+| `.devcontainer/devcontainer.json` | `devcontainers` |
+| `*.tf` files with a `terraform` block | `terraform` |
+
+**YAML generation — use this exact template, one `updates:` entry per detected ecosystem/directory pair:**
+
+```yaml
+version: 2
+updates:
+  - package-ecosystem: "<ecosystem>"
+    directory: "<directory>"
+    schedule:
+      interval: "weekly"
+      day: "saturday"
+    open-pull-requests-limit: 5
+    groups:
+      patch-and-minor:
+        update-types: ["patch", "minor"]
+    labels: ["dependencies"]
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+```
+
+**Ecosystem-specific tweaks:**
+- `github-actions`: `open-pull-requests-limit: 3`, group all actions together under `patterns: ["*"]` instead of the patch/minor split (actions rarely semver).
+- `docker`: `open-pull-requests-limit: 3`. No groups (base-image bumps deserve individual review).
+- For each detected ecosystem, use `directory: "/"` if the manifest is at root; use `directory: "/subdir"` for subdirectory manifests.
+
+**Always include a `github-actions` entry if `.github/workflows/` has any workflow file** — even if that's the only detected ecosystem (action bumps are security-relevant).
+
+**PR shape:**
+- Branch: `maintenance/dependabot-config`
+- Title: `chore: add Dependabot configuration`
+- Body: one-paragraph explainer that this enables weekly grouped dep update PRs with a 5-PR cap per ecosystem, lists the detected ecosystems, and links to https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference for reference. DRAFT, not auto-merge.
+- Polite tone (see top of prompt).
+
+**Cap: 3 Dependabot-config PRs per run total.** If more repos qualify, pick the highest-priority (most recently pushed, largest active ecosystem surface) and note deferred repos in the report.
+
+Report a `## Dependabot` section: PR URLs opened, repos deferred, repos skipped (with reason: renovate-present, already-configured, declined-previously, archived, WIP-block).
 
 ## Step 6 — Persistent state
 Open OR update an issue titled `[maintenance-sweep] last run` in $GITHUB_USER's most-active repo (highest `pushedAt`), with body = the timestamp of this run in ISO 8601. Close any older `[maintenance-sweep] last run` issues to keep noise down.
