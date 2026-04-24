@@ -80,32 +80,38 @@ After issue triage, also scan for OPEN pull requests on your repos that you did 
 6. Size — lines changed; flag >500 LOC as "large PR, may want to split" but gently.
 7. Targets default branch? (most repos; mismatch is usually an accident).
 
-**Post exactly ONE comment per PR** (never updates; the idempotency marker prevents re-posting):
+**Post exactly ONE comment per PR** (never updates; the idempotency marker prevents re-posting). No greeting, no "thanks for opening this", no emoji — get straight to the substance.
+
+If there's nothing that needs attention, skip posting entirely. The comment exists only when there are actionable notes OR when flagging a first-time contribution to the maintainer. Otherwise silence.
 
 ```
-👋 Thanks for opening this, @<author>!
+Automated triage notes (maintainer will do the formal review):
 
-This is an automated welcome from our triage bot. A maintainer will review shortly. In the meantime, a few quick notes to help the review go faster:
+<checklist — only items that need attention; omit anything that looks fine>
 
-<checklist — only include items that need attention; omit items that look good; if everything looks good, say "Everything looks good on the PR hygiene front — nice!">
-
-- [ ] <item 1>
-- [ ] <item 2>
-
-<one-line closing that matches the tone — e.g., "No rush — take your time on any follow-ups. And thanks again for pitching in!">
+- <item 1>
+- <item 2>
 
 <!-- claude-magician:welcome -->
 ```
 
-**Checklist items to use (only when relevant, polite phrasing):**
-- Title is a bit short — could you expand it to describe the change in ~5-10 words?
-- A description of what this PR does and why would help the reviewer — mind adding one?
-- No tests in the diff — would it be possible to include a test covering the change? (If testing the area is tricky, just a note in the PR body about what you tested manually is fine.)
-- CI checks are failing on X — could you take a look? Happy to help debug if it's environment-related.
-- Quite a large change (N lines). If any of it can be split into a follow-up PR, it'd help reviewers focus — but only if that's natural.
-- Looks like this targets `<branch>`; most changes go into `<default>` — was that intentional?
+If everything looks good AND the author is a first-time contributor, post ONLY a one-liner so the maintainer sees it quickly:
 
-**Tone rules (from top of prompt) apply — especially no condescension, no demands.** If it's a first-time contributor and everything looks good, double down on warmth.
+```
+Automated triage: first-time contributor PR, hygiene looks good. <!-- claude-magician:welcome -->
+```
+
+Otherwise (repeat contributor, all good): don't post anything.
+
+**Checklist items (direct phrasing, no pleasantries):**
+- Title is under 10 chars or generic (`update`, `fix`) — expand to 5–10 words describing the change.
+- PR body is empty. Add a short description of what and why.
+- No tests in the diff. Add a test covering the change, or note in the body what you tested manually.
+- CI failing: `<check name>` — `<one-line reason if visible>`.
+- Diff is N lines; consider splitting if natural.
+- Targets `<branch>` instead of default `<default>` — confirm that's intentional.
+
+**Tone rules from top of prompt apply.** Direct ≠ curt — still respectful, just no filler.
 
 **Never:**
 - Approve, close, or merge the PR
