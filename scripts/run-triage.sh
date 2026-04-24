@@ -43,6 +43,16 @@ claude -p "$PROMPT" \
   > "$REPORT" 2>"$LOG"
 EXIT=$?
 
+# Detect Claude usage-limit exhaustion: the CLI emits a short message to stdout
+# and exits non-zero. Rename the report so it doesn't look like a real run,
+# and notify distinctly — quota is a temporary "will retry next fire" issue,
+# not a bug in the script or the prompt.
+if grep -qiE "(monthly usage limit|usage limit|out of .* credits|quota.*(exceed|exhaust))" "$REPORT" 2>/dev/null; then
+  mv "$REPORT" "${REPORT%.md}.quota-skip.md"
+  osascript -e "display notification \"Claude quota exhausted — triage skipped. Will retry at next fire.\" with title \"⚠ Claude quota\" sound name \"Basso\"" 2>/dev/null || true
+  exit 2
+fi
+
 if [ "$EXIT" -ne 0 ]; then
   osascript -e "display notification \"Exit $EXIT — see $(basename "$LOG")\" with title \"GitHub Triage failed\" sound name \"Basso\"" 2>/dev/null || true
   exit "$EXIT"

@@ -39,6 +39,12 @@ claude -p "$PROMPT" \
   > "$REPORT" 2>"$LOG"
 EXIT=$?
 
+if grep -qiE "(monthly usage limit|usage limit|out of .* credits|quota.*(exceed|exhaust))" "$REPORT" 2>/dev/null; then
+  mv "$REPORT" "${REPORT%.md}.quota-skip.md"
+  osascript -e "display notification \"Claude quota exhausted — maintenance skipped. Will retry at next fire.\" with title \"⚠ Claude quota\" sound name \"Basso\"" 2>/dev/null || true
+  exit 2
+fi
+
 if [ "$EXIT" -ne 0 ]; then
   osascript -e "display notification \"Exit $EXIT — see $(basename "$LOG")\" with title \"GitHub Maintenance failed\" sound name \"Basso\"" 2>/dev/null || true
   exit "$EXIT"
