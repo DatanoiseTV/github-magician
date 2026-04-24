@@ -196,7 +196,22 @@ updates:
 - Body: one-paragraph explainer that this enables weekly grouped dep update PRs with a 5-PR cap per ecosystem, lists the detected ecosystems, and links to https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference for reference. DRAFT, not auto-merge.
 - Polite tone (see top of prompt).
 
-**Cap: 3 Dependabot-config PRs per run total.** If more repos qualify, pick the highest-priority (most recently pushed, largest active ecosystem surface) and note deferred repos in the report.
+**Smart caps (two gates — both apply):**
+
+1. **Concurrent cap (ceiling):** count currently-open Dependabot-config PRs by `@me` across all repos:
+   ```
+   gh search prs --author=@me --state=open --json repository,number,title \
+     | jq '[.[] | select(.title | test("dependabot"; "i") or test("chore: add Dependabot"; "i"))] | length'
+   ```
+   If the count is **≥ 8**, SKIP this step entirely for the run. Note in the report: `Dependabot step skipped — N open unmerged dependabot PRs already (review those first).` This prevents buildup if you haven't gotten to them.
+
+2. **Per-run cap:** open at most **5** new Dependabot-config PRs per run (up to the remaining headroom under the concurrent cap, whichever is smaller).
+   - If concurrent count is 6 and per-run cap is 5: open at most `8 − 6 = 2` new ones this run.
+   - If concurrent count is 0 and 7 repos qualify: open 5, defer 2 to next run.
+
+Pick qualifying repos by priority: **most recently pushed first**, then **largest ecosystem surface** (more ecosystems = higher value of centralizing dep updates). Note deferred repos in the report.
+
+This scheme means the bootstrap phase is fast (up to 5/run × 2 runs/week = 10 new configs/week) but self-limiting if PRs aren't reviewed.
 
 Report a `## Dependabot` section: PR URLs opened, repos deferred, repos skipped (with reason: renovate-present, already-configured, declined-previously, archived, WIP-block).
 
