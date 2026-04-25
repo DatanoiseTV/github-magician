@@ -45,6 +45,16 @@ if grep -qiE "(monthly usage limit|usage limit|out of .* credits|quota.*(exceed|
   exit 2
 fi
 
+if [ "$EXIT" -ne 0 ] && grep -qiE "(stream.*idle.*timeout|stream.*timeout|connection.*(reset|refused|aborted)|503 service|502 bad gateway|504 gateway|partial response received|temporarily unavailable)" "$REPORT" 2>/dev/null; then
+  echo "$(date '+%F %T') transient error — retrying after 10s" >> "$LOG"
+  sleep 10
+  claude -p "$PROMPT" \
+    --model claude-sonnet-4-6 \
+    --permission-mode acceptEdits \
+    > "$REPORT" 2>>"$LOG"
+  EXIT=$?
+fi
+
 if [ "$EXIT" -ne 0 ]; then
   osascript -e "display notification \"Exit $EXIT — see $(basename "$LOG")\" with title \"GitHub Maintenance failed\" sound name \"Basso\"" 2>/dev/null || true
   exit "$EXIT"
